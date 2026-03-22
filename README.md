@@ -1,6 +1,6 @@
-# Atlas Haven
+# Cairn
 
-Atlas Haven is the Python + Next.js rewrite workspace for Project N.O.M.A.D.
+Offline AI essentials. Cairn is the Python + Next.js workspace for Project N.O.M.A.D. (Atlas Haven).
 
 This nested monorepo preserves the current local-first Docker operating model while
 moving the control plane to:
