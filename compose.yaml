@@ -1,0 +1,86 @@
+name: atlas-haven
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ATLAS_HAVEN_DATABASE_URL: ${ATLAS_HAVEN_DATABASE_URL:-mysql+pymysql://atlas:atlas@mysql:3306/atlas_haven}
+      ATLAS_HAVEN_REDIS_URL: ${ATLAS_HAVEN_REDIS_URL:-redis://redis:6379/0}
+      ATLAS_HAVEN_STORAGE_PATH: ${ATLAS_HAVEN_STORAGE_PATH:-../storage}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/workspace/backend
+      - ./apps:/workspace/apps
+      - ./docs:/workspace/docs
+      - ../collections:/workspace/collections:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mysql
+      - redis
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["uv", "run", "python", "-m", "app.shared.worker"]
+    environment:
+      ATLAS_HAVEN_DATABASE_URL: ${ATLAS_HAVEN_DATABASE_URL:-mysql+pymysql://atlas:atlas@mysql:3306/atlas_haven}
+      ATLAS_HAVEN_REDIS_URL: ${ATLAS_HAVEN_REDIS_URL:-redis://redis:6379/0}
+      ATLAS_HAVEN_STORAGE_PATH: ${ATLAS_HAVEN_STORAGE_PATH:-../storage}
+    volumes:
+      - ./backend:/workspace/backend
+      - ./apps:/workspace/apps
+      - ./docs:/workspace/docs
+      - ../collections:/workspace/collections:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - mysql
+      - redis
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${ATLAS_HAVEN_FRONTEND_API_BASE_URL:-http://api:8000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/workspace/frontend
+    depends_on:
+      - api
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-atlas_haven}
+      MYSQL_USER: ${MYSQL_USER:-atlas}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-atlas}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-atlas-root}
+    ports:
+      - "3307:3306"
+    volumes:
+      - ../.docker/mysql:/var/lib/mysql
+
+  redis:
+    image: redis:7.4
+    ports:
+      - "6380:6379"
+    volumes:
+      - ../.docker/redis:/data
+
+  disk-collector:
+    build:
+      context: ../install/sidecar-disk-collector
+      dockerfile: Dockerfile
+    environment:
+      NOMAD_STORAGE_PATH: ${ATLAS_HAVEN_STORAGE_PATH:-../storage}
+    volumes:
+      - ../storage:/app/storage
+
+networks:
+  default:
+    name: project-nomad_default

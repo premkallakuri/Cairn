@@ -1,0 +1,28 @@
+{
+  "options": [
+    {
+      "id": "none",
+      "name": "None",
+      "description": "No Wikipedia ZIM installed",
+      "size_mb": 0,
+      "url": null,
+      "version": null
+    },
+    {
+      "id": "top-mini",
+      "name": "English Wikipedia — Top 100 (bundled demo)",
+      "description": "Copies the bundled seed file from install/ — no network required",
+      "size_mb": 5,
+      "url": null,
+      "version": "2025-12"
+    },
+    {
+      "id": "en-100-mini-remote",
+      "name": "English Wikipedia — 100 articles (mini, Kiwix)",
+      "description": "Small offline Wikipedia from the Kiwix mirror (good for first download)",
+      "size_mb": 5,
+      "url": "https://mirror.download.kiwix.org/zim/wikipedia/wikipedia_en_100_mini_2026-01.zim",
+      "version": "2026-01"
+    }
+  ]
+}

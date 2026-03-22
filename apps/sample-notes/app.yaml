@@ -1,0 +1,38 @@
+id: nomad_sample_notes
+kind: sibling_app
+display:
+  name: Sample Notes
+  description: Minimal sample app package used to prove the catalog and scaffold flow.
+  icon: IconNotes
+  powered_by: Atlas Haven
+  order: 95
+  ui_location: bridge
+runtime:
+  image: ghcr.io/atlas-haven/sample-notes:0.1.0
+  command:
+    - sh
+    - -c
+    - sleep infinity
+  ports:
+    - host: 8105
+      container: 8080
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires: []
+dependencies: []
+healthcheck:
+  type: http
+  target: http://{container_name}:8080
+hooks: {}
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: false
+docs:
+  slug: app-sample-notes
+tests:
+  smoke: apps/sample-notes/tests/test_smoke.py

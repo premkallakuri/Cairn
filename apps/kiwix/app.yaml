@@ -1,0 +1,42 @@
+id: nomad_kiwix_server
+kind: sibling_app
+display:
+  name: Information Library
+  description: Offline access to encyclopedias and references.
+  icon: IconBooks
+  powered_by: Kiwix
+  order: 10
+  ui_location: bridge
+runtime:
+  image: ghcr.io/kiwix/kiwix-serve:3.8.1
+  command:
+    - "*.zim"
+    - "--address=all"
+  ports:
+    - host: 8090
+      container: 8080
+  mounts:
+    - source: ${NOMAD_STORAGE_PATH}/zim
+      target: /data
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires:
+    - storage/zim
+dependencies: []
+healthcheck:
+  type: http
+  target: http://{container_name}:8080
+hooks:
+  preinstall: apps.kiwix.hooks.preinstall
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: false
+docs:
+  slug: app-kiwix
+tests:
+  smoke: apps/kiwix/tests/test_smoke.py

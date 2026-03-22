@@ -1,0 +1,70 @@
+{
+  "categories": [
+    {
+      "name": "Medicine",
+      "slug": "medicine",
+      "icon": "heart",
+      "description": "Medical reference ZIM stacks",
+      "language": "en",
+      "tiers": [
+        {
+          "name": "Essential",
+          "slug": "medicine-essential",
+          "description": "Core medicine resources",
+          "recommended": true,
+          "includesTier": null,
+          "resources": [
+            {
+              "id": "medicine_custom",
+              "version": "1",
+              "title": "Custom",
+              "description": "Matches remote test URL",
+              "url": "https://download.kiwix.org/zim/custom.zim",
+              "size_mb": 427
+            },
+            {
+              "id": "medicine_a",
+              "version": "1",
+              "title": "A",
+              "description": "Tier resource",
+              "url": "https://download.kiwix.org/zim/medicine_a.zim",
+              "size_mb": 426
+            },
+            {
+              "id": "medicine_b",
+              "version": "1",
+              "title": "B",
+              "description": "Tier resource",
+              "url": "https://download.kiwix.org/zim/medicine_b.zim",
+              "size_mb": 426
+            },
+            {
+              "id": "medicine_c",
+              "version": "1",
+              "title": "C",
+              "description": "Tier resource",
+              "url": "https://download.kiwix.org/zim/medicine_c.zim",
+              "size_mb": 426
+            },
+            {
+              "id": "medicine_d",
+              "version": "1",
+              "title": "D",
+              "description": "Tier resource",
+              "url": "https://download.kiwix.org/zim/medicine_d.zim",
+              "size_mb": 426
+            }
+          ]
+        },
+        {
+          "name": "Standard",
+          "slug": "medicine-standard",
+          "description": "Extended medicine resources",
+          "recommended": false,
+          "includesTier": "medicine-essential",
+          "resources": []
+        }
+      ]
+    }
+  ]
+}

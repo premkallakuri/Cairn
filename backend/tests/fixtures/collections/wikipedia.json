@@ -1,0 +1,20 @@
+{
+  "options": [
+    {
+      "id": "none",
+      "name": "None",
+      "description": "No Wikipedia ZIM installed",
+      "size_mb": 0,
+      "url": null,
+      "version": null
+    },
+    {
+      "id": "top-mini",
+      "name": "English Wikipedia — Top 100 (bundled demo)",
+      "description": "Tiny seeded file for smoke tests",
+      "size_mb": 5,
+      "url": null,
+      "version": "2025-12"
+    }
+  ]
+}

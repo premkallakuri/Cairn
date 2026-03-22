@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80" fill="none">
+  <!-- Cairn stone stack - for dark backgrounds -->
+  <g transform="translate(8, 6)">
+    <!-- Bottom stone -->
+    <ellipse cx="32" cy="62" rx="28" ry="10" fill="#C2543D" opacity="0.9"/>
+    <ellipse cx="32" cy="58" rx="26" ry="9" fill="#D4715A"/>
+    <!-- Middle stone -->
+    <ellipse cx="32" cy="42" rx="20" ry="8" fill="#C2543D" opacity="0.9"/>
+    <ellipse cx="32" cy="39" rx="18" ry="7" fill="#D4715A"/>
+    <!-- Top stone -->
+    <ellipse cx="32" cy="24" rx="13" ry="6" fill="#C2543D" opacity="0.9"/>
+    <ellipse cx="32" cy="22" rx="11" ry="5" fill="#D4715A"/>
+    <!-- Summit stone -->
+    <ellipse cx="32" cy="12" rx="7" ry="4" fill="#0D9488"/>
+    <ellipse cx="32" cy="11" rx="6" ry="3" fill="#14B8A6"/>
+    <!-- Subtle glow on summit -->
+    <ellipse cx="32" cy="11" rx="3" ry="1.5" fill="#5EEAD4" opacity="0.5"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="80" y="52" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="38" font-weight="700" letter-spacing="0.08em" fill="#FAFAF9">CAIRN</text>
+  <!-- Tagline -->
+  <text x="82" y="68" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="10" font-weight="500" letter-spacing="0.28em" fill="#A8A29E" text-transform="uppercase">YOUR OFFLINE KNOWLEDGE BASE</text>
+</svg>

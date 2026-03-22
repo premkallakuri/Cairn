@@ -1,0 +1,35 @@
+id: nomad_cyberchef
+kind: sibling_app
+display:
+  name: CyberChef
+  description: Browser-based data transformation toolkit.
+  icon: IconFlask
+  powered_by: CyberChef
+  order: 50
+  ui_location: control_room
+runtime:
+  image: mpepping/cyberchef:latest
+  ports:
+    - host: 8001
+      container: 8000
+  mounts: []
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires: []
+dependencies: []
+healthcheck:
+  type: http
+  target: http://{container_name}:8000
+hooks: {}
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: true
+docs:
+  slug: app-cyberchef
+tests:
+  smoke: apps/cyberchef/tests/test_smoke.py

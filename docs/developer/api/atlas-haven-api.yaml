@@ -1,0 +1,2667 @@
+openapi: 3.1.0
+info:
+  title: Atlas Haven Reimplementation API
+  version: 1.0.0-draft
+  summary: Compatibility-first API contract for the Python + Next.js reimplementation of Project N.O.M.A.D.
+  description: |
+    This specification captures the current application API surface and turns it into a
+    reimplementation contract for the future Atlas Haven platform.
+
+    Goals:
+    - keep current `/api/*` paths stable where practical
+    - preserve behavior for the existing frontend and operator workflows
+    - normalize obviously inconsistent response shapes during the rewrite
+
+    Scope:
+    - health and system management
+    - Docker-managed service lifecycle
+    - maps and ZIM content workflows
+    - Ollama model management and chat
+    - Knowledge Base / RAG
+    - benchmark flows
+    - settings, content updates, and download tracking
+servers:
+  - url: http://localhost:8080/api
+    description: Local Docker runtime
+tags:
+  - name: Health
+  - name: Easy Setup
+  - name: Content Updates
+  - name: Maps
+  - name: Docs
+  - name: Downloads
+  - name: Ollama
+  - name: Chat Sessions
+  - name: Knowledge Base
+  - name: System
+  - name: ZIM
+  - name: Benchmark
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: API is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /easy-setup/curated-categories:
+    get:
+      tags: [Easy Setup]
+      summary: List curated ZIM categories used by Easy Setup
+      operationId: listEasySetupCuratedCategories
+      responses:
+        '200':
+          description: Curated categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryWithStatus'
+
+  /manifests/refresh:
+    post:
+      tags: [Easy Setup]
+      summary: Refresh bundled content manifests into cache/storage
+      operationId: refreshManifests
+      responses:
+        '200':
+          description: Manifest refresh results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestRefreshResponse'
+
+  /content-updates/check:
+    post:
+      tags: [Content Updates]
+      summary: Check for curated content updates
+      operationId: checkContentUpdates
+      responses:
+        '200':
+          description: Content update results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentUpdateCheckResult'
+
+  /content-updates/apply:
+    post:
+      tags: [Content Updates]
+      summary: Apply a single content update
+      operationId: applyContentUpdate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceUpdateInfo'
+      responses:
+        '200':
+          description: Update accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentUpdateApplyResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /content-updates/apply-all:
+    post:
+      tags: [Content Updates]
+      summary: Apply multiple content updates
+      operationId: applyAllContentUpdates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [updates]
+              properties:
+                updates:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/ResourceUpdateInfo'
+      responses:
+        '200':
+          description: Batch update results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentUpdateApplyAllResponse'
+
+  /maps/regions:
+    get:
+      tags: [Maps]
+      summary: List downloaded map region files
+      operationId: listMapRegions
+      responses:
+        '200':
+          description: Map region files
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files]
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileEntry'
+
+  /maps/styles:
+    get:
+      tags: [Maps]
+      summary: Generate a MapLibre style document for local map rendering
+      operationId: getMapStyles
+      responses:
+        '200':
+          description: Map style definition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseStylesFile'
+        '500':
+          description: Base map assets are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOrMessageResponse'
+
+  /maps/curated-collections:
+    get:
+      tags: [Maps]
+      summary: List curated PMTiles map collections
+      operationId: listCuratedMapCollections
+      responses:
+        '200':
+          description: Curated map collections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectionWithStatus'
+
+  /maps/fetch-latest-collections:
+    post:
+      tags: [Maps]
+      summary: Refresh map collection data
+      operationId: fetchLatestMapCollections
+      responses:
+        '200':
+          description: Refresh result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+
+  /maps/download-base-assets:
+    post:
+      tags: [Maps]
+      summary: Download or refresh base assets required by the maps viewer
+      operationId: downloadBaseMapAssets
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Optional custom mirror URL
+      responses:
+        '200':
+          description: Base assets download accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+
+  /maps/download-remote:
+    post:
+      tags: [Maps]
+      summary: Queue a remote PMTiles region download
+      operationId: downloadRemoteMapRegion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteDownloadRequest'
+      responses:
+        '200':
+          description: Download queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteMapDownloadResponse'
+        '400':
+          description: Invalid or blocked URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /maps/download-remote-preflight:
+    post:
+      tags: [Maps]
+      summary: Preflight a PMTiles region download before queueing it
+      operationId: preflightRemoteMapRegion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteDownloadRequest'
+      responses:
+        '200':
+          description: Preflight result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MapRemotePreflightResponse'
+
+  /maps/download-collection:
+    post:
+      tags: [Maps]
+      summary: Queue all resources for a curated map collection
+      operationId: downloadMapCollection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadCollectionRequest'
+      responses:
+        '200':
+          description: Collection download queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDownloadResponse'
+
+  /maps/{filename}:
+    delete:
+      tags: [Maps]
+      summary: Delete a downloaded map file
+      operationId: deleteMapFile
+      parameters:
+        - $ref: '#/components/parameters/FilenamePath'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOrMessageResponse'
+
+  /docs/list:
+    get:
+      tags: [Docs]
+      summary: List documentation pages
+      operationId: listDocs
+      responses:
+        '200':
+          description: Documentation index
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocIndexItem'
+
+  /downloads/jobs:
+    get:
+      tags: [Downloads]
+      summary: List all tracked download jobs
+      operationId: listDownloadJobs
+      responses:
+        '200':
+          description: Download jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DownloadJobWithProgress'
+
+  /downloads/jobs/{filetype}:
+    get:
+      tags: [Downloads]
+      summary: List tracked download jobs for a file type
+      operationId: listDownloadJobsByFiletype
+      parameters:
+        - name: filetype
+          in: path
+          required: true
+          schema:
+            type: string
+            examples: [map, zim, model]
+      responses:
+        '200':
+          description: Download jobs filtered by file type
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DownloadJobWithProgress'
+
+  /ollama/models:
+    get:
+      tags: [Ollama]
+      summary: List available Ollama models
+      operationId: listAvailableModels
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [pulls, name]
+        - name: recommendedOnly
+          in: query
+          schema:
+            type: boolean
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: force
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Available models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableModelsResponse'
+    post:
+      tags: [Ollama]
+      summary: Queue an Ollama model download
+      operationId: downloadModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelNameRequest'
+      responses:
+        '200':
+          description: Download job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+    delete:
+      tags: [Ollama]
+      summary: Delete a local Ollama model
+      operationId: deleteModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelNameRequest'
+      responses:
+        '200':
+          description: Model removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /ollama/installed-models:
+    get:
+      tags: [Ollama]
+      summary: List installed Ollama models
+      operationId: listInstalledModels
+      responses:
+        '200':
+          description: Installed models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstalledModel'
+
+  /ollama/chat:
+    post:
+      tags: [Ollama]
+      summary: Send a chat request to Ollama with optional streaming and Knowledge Base context
+      operationId: sendChatMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OllamaChatRequest'
+      responses:
+        '200':
+          description: Chat response or event stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OllamaChatResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Event stream of chat chunks
+
+  /chat/suggestions:
+    get:
+      tags: [Chat Sessions]
+      summary: Get suggested starter prompts
+      operationId: getChatSuggestions
+      responses:
+        '200':
+          description: Prompt suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestionsResponse'
+
+  /chat/sessions:
+    get:
+      tags: [Chat Sessions]
+      summary: List chat sessions
+      operationId: listChatSessions
+      responses:
+        '200':
+          description: Chat sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatSessionSummary'
+    post:
+      tags: [Chat Sessions]
+      summary: Create a new chat session
+      operationId: createChatSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSessionCreateResponse'
+
+  /chat/sessions/all:
+    delete:
+      tags: [Chat Sessions]
+      summary: Delete all chat sessions
+      operationId: deleteAllChatSessions
+      responses:
+        '200':
+          description: Sessions deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /chat/sessions/{id}:
+    get:
+      tags: [Chat Sessions]
+      summary: Get a specific chat session with messages
+      operationId: getChatSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          description: Chat session detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSessionDetail'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Chat Sessions]
+      summary: Update a chat session
+      operationId: updateChatSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChatSessionRequest'
+      responses:
+        '200':
+          description: Updated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSessionCreateResponse'
+    delete:
+      tags: [Chat Sessions]
+      summary: Delete a chat session
+      operationId: deleteChatSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '204':
+          description: Session deleted
+
+  /chat/sessions/{id}/messages:
+    post:
+      tags: [Chat Sessions]
+      summary: Add a message to a chat session
+      operationId: addChatMessage
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddChatMessageRequest'
+      responses:
+        '201':
+          description: Message created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+
+  /rag/upload:
+    post:
+      tags: [Knowledge Base]
+      summary: Upload a document for embedding into the Knowledge Base
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Upload accepted and embedding queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagUploadResponse'
+
+  /rag/files:
+    get:
+      tags: [Knowledge Base]
+      summary: List Knowledge Base source files
+      operationId: listRagFiles
+      responses:
+        '200':
+          description: Stored file list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagFilesResponse'
+    delete:
+      tags: [Knowledge Base]
+      summary: Delete a Knowledge Base source file
+      operationId: deleteRagFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteRagFileRequest'
+      responses:
+        '200':
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /rag/active-jobs:
+    get:
+      tags: [Knowledge Base]
+      summary: List active embedding jobs
+      operationId: listActiveEmbedJobs
+      responses:
+        '200':
+          description: Active embedding jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmbedJobWithProgress'
+
+  /rag/job-status:
+    get:
+      tags: [Knowledge Base]
+      summary: Get embedding status for a file
+      operationId: getEmbedJobStatus
+      parameters:
+        - name: filePath
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagJobStatus'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rag/sync:
+    post:
+      tags: [Knowledge Base]
+      summary: Scan storage and queue missing Knowledge Base embeddings
+      operationId: syncRagStorage
+      responses:
+        '200':
+          description: Sync results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RagSyncResponse'
+
+  /system/info:
+    get:
+      tags: [System]
+      summary: Get system telemetry and hardware information
+      operationId: getSystemInfo
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemInformationResponse'
+
+  /system/internet-status:
+    get:
+      tags: [System]
+      summary: Check internet reachability
+      operationId: getInternetStatus
+      responses:
+        '200':
+          description: Internet reachability state
+          content:
+            application/json:
+              schema:
+                type: boolean
+
+  /system/services:
+    get:
+      tags: [System]
+      summary: List platform services and sibling apps
+      operationId: listSystemServices
+      parameters:
+        - name: installedOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceSlim'
+
+  /system/services/affect:
+    post:
+      tags: [System]
+      summary: Start, stop, or restart an installed service
+      operationId: affectService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AffectServiceRequest'
+      responses:
+        '200':
+          description: Service action result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /system/services/install:
+    post:
+      tags: [System]
+      summary: Install a service or app
+      operationId: installService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallServiceRequest'
+      responses:
+        '200':
+          description: Install started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Install rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /system/services/force-reinstall:
+    post:
+      tags: [System]
+      summary: Reinstall a service and wipe app-owned data
+      operationId: forceReinstallService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallServiceRequest'
+      responses:
+        '200':
+          description: Reinstall started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /system/services/check-updates:
+    post:
+      tags: [System]
+      summary: Dispatch a service image update check
+      operationId: checkServiceUpdates
+      responses:
+        '200':
+          description: Update check queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /system/services/{name}/available-versions:
+    get:
+      tags: [System]
+      summary: List available container image versions for an installed service
+      operationId: getAvailableServiceVersions
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableVersionsResponse'
+        '404':
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /system/services/update:
+    post:
+      tags: [System]
+      summary: Update a service to a target version
+      operationId: updateService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceRequest'
+      responses:
+        '200':
+          description: Update result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Update failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /system/subscribe-release-notes:
+    post:
+      tags: [System]
+      summary: Subscribe an email address to release-note notifications
+      operationId: subscribeToReleaseNotes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Subscription result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /system/latest-version:
+    get:
+      tags: [System]
+      summary: Get current and latest version metadata
+      operationId: checkLatestVersion
+      parameters:
+        - name: force
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LatestVersionResponse'
+
+  /system/update:
+    post:
+      tags: [System]
+      summary: Request a system update operation
+      operationId: requestSystemUpdate
+      responses:
+        '200':
+          description: Update accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemUpdateRequestResponse'
+        '409':
+          description: Update could not be started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Update sidecar unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /system/update/status:
+    get:
+      tags: [System]
+      summary: Get system update status
+      operationId: getSystemUpdateStatus
+      responses:
+        '200':
+          description: Update status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemUpdateStatus'
+
+  /system/update/logs:
+    get:
+      tags: [System]
+      summary: Get system update logs
+      operationId: getSystemUpdateLogs
+      responses:
+        '200':
+          description: Update logs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [logs]
+                properties:
+                  logs:
+                    type: string
+
+  /system/settings:
+    get:
+      tags: [System]
+      summary: Get a persisted system setting
+      operationId: getSystemSetting
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Setting value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+    patch:
+      tags: [System]
+      summary: Update a persisted system setting
+      operationId: updateSystemSetting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSystemSettingRequest'
+      responses:
+        '200':
+          description: Update success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+
+  /zim/list:
+    get:
+      tags: [ZIM]
+      summary: List locally stored ZIM files
+      operationId: listZimFiles
+      responses:
+        '200':
+          description: Local ZIM files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListZimFilesResponse'
+
+  /zim/list-remote:
+    get:
+      tags: [ZIM]
+      summary: List remote ZIM files from the Kiwix catalog
+      operationId: listRemoteZimFiles
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: count
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 12
+        - name: query
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Remote ZIM catalog page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListRemoteZimFilesResponse'
+
+  /zim/curated-categories:
+    get:
+      tags: [ZIM]
+      summary: List curated ZIM categories and tiers
+      operationId: listCuratedZimCategories
+      responses:
+        '200':
+          description: Curated categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryWithStatus'
+
+  /zim/download-remote:
+    post:
+      tags: [ZIM]
+      summary: Queue a remote ZIM download
+      operationId: downloadRemoteZimFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoteZimDownloadRequest'
+      responses:
+        '200':
+          description: Download queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoteZimDownloadResponse'
+
+  /zim/download-category-tier:
+    post:
+      tags: [ZIM]
+      summary: Queue all resources for a curated category tier
+      operationId: downloadCategoryTier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadCategoryTierRequest'
+      responses:
+        '200':
+          description: Tier download queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryTierDownloadResponse'
+
+  /zim/wikipedia:
+    get:
+      tags: [ZIM]
+      summary: Get Wikipedia selection state and options
+      operationId: getWikipediaState
+      responses:
+        '200':
+          description: Wikipedia state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WikipediaState'
+
+  /zim/wikipedia/select:
+    post:
+      tags: [ZIM]
+      summary: Select a Wikipedia package
+      operationId: selectWikipedia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectWikipediaRequest'
+      responses:
+        '200':
+          description: Selection accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelectWikipediaResponse'
+
+  /zim/{filename}:
+    delete:
+      tags: [ZIM]
+      summary: Delete a local ZIM file
+      operationId: deleteZimFile
+      parameters:
+        - $ref: '#/components/parameters/FilenamePath'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOrMessageResponse'
+
+  /benchmark/run:
+    post:
+      tags: [Benchmark]
+      summary: Start a benchmark run
+      operationId: runBenchmark
+      parameters:
+        - name: sync
+          in: query
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunBenchmarkRequest'
+      responses:
+        '200':
+          description: Synchronous benchmark completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunBenchmarkSyncResponse'
+        '201':
+          description: Asynchronous benchmark queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunBenchmarkResponse'
+        '409':
+          description: Another benchmark is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkConflictResponse'
+
+  /benchmark/run/system:
+    post:
+      tags: [Benchmark]
+      summary: Start a system-only benchmark
+      operationId: runSystemBenchmark
+      responses:
+        '201':
+          description: Benchmark queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleBenchmarkStartResponse'
+        '409':
+          description: Another benchmark is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkConflictResponse'
+
+  /benchmark/run/ai:
+    post:
+      tags: [Benchmark]
+      summary: Start an AI-only benchmark
+      operationId: runAiBenchmark
+      responses:
+        '201':
+          description: Benchmark queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleBenchmarkStartResponse'
+        '409':
+          description: Another benchmark is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkConflictResponse'
+
+  /benchmark/results:
+    get:
+      tags: [Benchmark]
+      summary: List benchmark results
+      operationId: listBenchmarkResults
+      responses:
+        '200':
+          description: Benchmark history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkResultsResponse'
+
+  /benchmark/results/latest:
+    get:
+      tags: [Benchmark]
+      summary: Get the latest benchmark result
+      operationId: getLatestBenchmarkResult
+      responses:
+        '200':
+          description: Latest benchmark
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result:
+                    oneOf:
+                      - $ref: '#/components/schemas/BenchmarkResult'
+                      - type: 'null'
+
+  /benchmark/results/{id}:
+    get:
+      tags: [Benchmark]
+      summary: Get a benchmark result by benchmark_id
+      operationId: getBenchmarkResult
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Benchmark result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [result]
+                properties:
+                  result:
+                    $ref: '#/components/schemas/BenchmarkResult'
+        '404':
+          description: Result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /benchmark/submit:
+    post:
+      tags: [Benchmark]
+      summary: Submit a benchmark to the central repository
+      operationId: submitBenchmark
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitBenchmarkRequest'
+      responses:
+        '200':
+          description: Submission succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitBenchmarkSuccessResponse'
+        '400':
+          description: Submission rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitBenchmarkErrorResponse'
+        '409':
+          description: Already submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitBenchmarkErrorResponse'
+
+  /benchmark/builder-tag:
+    post:
+      tags: [Benchmark]
+      summary: Update the builder tag for a benchmark
+      operationId: updateBuilderTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBuilderTagRequest'
+      responses:
+        '200':
+          description: Builder tag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBuilderTagResponse'
+        '400':
+          description: Invalid builder tag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBuilderTagErrorResponse'
+        '404':
+          description: Benchmark not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBuilderTagErrorResponse'
+
+  /benchmark/comparison:
+    get:
+      tags: [Benchmark]
+      summary: Fetch external comparison statistics
+      operationId: getBenchmarkComparisonStats
+      responses:
+        '200':
+          description: Comparison statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stats]
+                properties:
+                  stats:
+                    oneOf:
+                      - $ref: '#/components/schemas/RepositoryStats'
+                      - type: 'null'
+
+  /benchmark/status:
+    get:
+      tags: [Benchmark]
+      summary: Get current benchmark status
+      operationId: getBenchmarkStatus
+      responses:
+        '200':
+          description: Benchmark status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkStatusResponse'
+
+  /benchmark/settings:
+    get:
+      tags: [Benchmark]
+      summary: Get benchmark settings
+      operationId: getBenchmarkSettings
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenchmarkSettings'
+    post:
+      tags: [Benchmark]
+      summary: Update benchmark settings
+      operationId: updateBenchmarkSettings
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allow_anonymous_submission:
+                  type: boolean
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, settings]
+                properties:
+                  success:
+                    type: boolean
+                  settings:
+                    $ref: '#/components/schemas/BenchmarkSettings'
+
+components:
+  parameters:
+    FilenamePath:
+      name: filename
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+    ErrorOrMessageResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    SuccessMessageResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    ManifestRefreshResponse:
+      type: object
+      required: [success, changed]
+      properties:
+        success:
+          type: boolean
+        changed:
+          type: object
+          required: [zim_categories, maps, wikipedia]
+          properties:
+            zim_categories:
+              type: boolean
+            maps:
+              type: boolean
+            wikipedia:
+              type: boolean
+    SpecResource:
+      type: object
+      required: [id, version, title, description, url, size_mb]
+      properties:
+        id:
+          type: string
+        version:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        size_mb:
+          type: number
+    SpecTier:
+      type: object
+      required: [name, slug, description, resources]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        recommended:
+          type: boolean
+        includesTier:
+          type: string
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpecResource'
+    CategoryWithStatus:
+      type: object
+      required: [name, slug, icon, description, language, tiers]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        icon:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        installedTierSlug:
+          type: string
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpecTier'
+    CollectionWithStatus:
+      type: object
+      required: [name, slug, description, icon, language, resources, all_installed, installed_count, total_count]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        language:
+          type: string
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpecResource'
+        all_installed:
+          type: boolean
+        installed_count:
+          type: integer
+        total_count:
+          type: integer
+    ResourceUpdateInfo:
+      type: object
+      required: [resource_id, resource_type, installed_version, latest_version, download_url]
+      properties:
+        resource_id:
+          type: string
+        resource_type:
+          type: string
+          enum: [zim, map]
+        installed_version:
+          type: string
+        latest_version:
+          type: string
+        download_url:
+          type: string
+          format: uri
+    ContentUpdateCheckResult:
+      type: object
+      required: [updates, checked_at]
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceUpdateInfo'
+        checked_at:
+          type: string
+          format: date-time
+        error:
+          type: string
+    ContentUpdateApplyResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        jobId:
+          type: string
+        error:
+          type: string
+    ContentUpdateApplyAllResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            required: [resource_id, success]
+            properties:
+              resource_id:
+                type: string
+              success:
+                type: boolean
+              jobId:
+                type: string
+              error:
+                type: string
+    FileEntry:
+      oneOf:
+        - type: object
+          required: [type, key, name]
+          properties:
+            type:
+              type: string
+              const: file
+            key:
+              type: string
+            name:
+              type: string
+        - type: object
+          required: [type, prefix, name]
+          properties:
+            type:
+              type: string
+              const: directory
+            prefix:
+              type: string
+            name:
+              type: string
+    DownloadJobWithProgress:
+      type: object
+      required: [jobId, url, progress, filepath, filetype]
+      properties:
+        jobId:
+          type: string
+        url:
+          type: string
+          format: uri
+        progress:
+          type: number
+        filepath:
+          type: string
+        filetype:
+          type: string
+    RemoteDownloadRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    RemoteMapDownloadResponse:
+      type: object
+      required: [message, filename, url]
+      properties:
+        message:
+          type: string
+        filename:
+          type: string
+        jobId:
+          type: string
+        url:
+          type: string
+          format: uri
+      description: |
+        The current implementation has a slightly inconsistent map-download response shape.
+        The reimplementation should normalize it to a flat `filename` plus optional `jobId`.
+    MapRemotePreflightResponse:
+      oneOf:
+        - type: object
+          required: [filename, size]
+          properties:
+            filename:
+              type: string
+            size:
+              type: integer
+        - type: object
+          required: [message]
+          properties:
+            message:
+              type: string
+    DownloadCollectionRequest:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
+    CollectionDownloadResponse:
+      type: object
+      required: [message, slug]
+      properties:
+        message:
+          type: string
+        slug:
+          type: string
+        resources:
+          type: array
+          items:
+            type: string
+          nullable: true
+    BaseStylesFile:
+      type: object
+      required: [version, sources, layers, sprite, glyphs]
+      properties:
+        version:
+          type: integer
+        sources:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              type:
+                type: string
+              attribution:
+                type: string
+              url:
+                type: string
+        layers:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        sprite:
+          type: string
+        glyphs:
+          type: string
+    ServiceSlim:
+      type: object
+      required:
+        [id, service_name, installed, installation_status, ui_location, friendly_name, description, icon, powered_by, display_order, container_image]
+      properties:
+        id:
+          type: integer
+        service_name:
+          type: string
+        friendly_name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        installed:
+          type: boolean
+        installation_status:
+          type: string
+          enum: [idle, installing, error]
+        status:
+          type: string
+          nullable: true
+        ui_location:
+          type: string
+          nullable: true
+        powered_by:
+          type: string
+          nullable: true
+        display_order:
+          type: integer
+          nullable: true
+        container_image:
+          type: string
+        available_update_version:
+          type: string
+          nullable: true
+    InstallServiceRequest:
+      type: object
+      required: [service_name]
+      properties:
+        service_name:
+          type: string
+    AffectServiceRequest:
+      type: object
+      required: [service_name, action]
+      properties:
+        service_name:
+          type: string
+        action:
+          type: string
+          enum: [start, stop, restart]
+    UpdateServiceRequest:
+      type: object
+      required: [service_name, target_version]
+      properties:
+        service_name:
+          type: string
+        target_version:
+          type: string
+    AvailableVersionsResponse:
+      type: object
+      required: [versions]
+      properties:
+        versions:
+          type: array
+          items:
+            type: object
+            required: [tag, isLatest]
+            properties:
+              tag:
+                type: string
+              isLatest:
+                type: boolean
+              releaseUrl:
+                type: string
+                format: uri
+    LatestVersionResponse:
+      type: object
+      required: [success, updateAvailable, currentVersion, latestVersion]
+      properties:
+        success:
+          type: boolean
+        updateAvailable:
+          type: boolean
+        currentVersion:
+          type: string
+        latestVersion:
+          type: string
+        message:
+          type: string
+    SystemUpdateStatus:
+      type: object
+      required: [stage, progress, message, timestamp]
+      properties:
+        stage:
+          type: string
+          enum: [idle, starting, pulling, pulled, recreating, complete, error]
+        progress:
+          type: number
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    SystemUpdateRequestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        note:
+          type: string
+        error:
+          type: string
+    SystemSettingResponse:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+        value:
+          nullable: true
+    UpdateSystemSettingRequest:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+          enum:
+            - chat.suggestionsEnabled
+            - chat.lastModel
+            - ui.hasVisitedEasySetup
+            - system.earlyAccess
+            - ai.assistantCustomName
+        value:
+          nullable: true
+    NomadDiskFilesystem:
+      type: object
+      required: [fs, mount, used, size, percentUsed]
+      properties:
+        fs:
+          type: string
+        mount:
+          type: string
+        used:
+          type: number
+        size:
+          type: number
+        percentUsed:
+          type: number
+    NomadDiskInfo:
+      type: object
+      required: [name, model, vendor, rota, tran, size, totalUsed, totalSize, percentUsed, filesystems]
+      properties:
+        name:
+          type: string
+        model:
+          type: string
+        vendor:
+          type: string
+        rota:
+          type: boolean
+        tran:
+          type: string
+        size:
+          type: string
+        totalUsed:
+          type: number
+        totalSize:
+          type: number
+        percentUsed:
+          type: number
+        filesystems:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomadDiskFilesystem'
+    GpuHealthStatus:
+      type: object
+      required: [status, hasNvidiaRuntime, ollamaGpuAccessible]
+      properties:
+        status:
+          type: string
+          enum: [ok, passthrough_failed, no_gpu, ollama_not_installed]
+        hasNvidiaRuntime:
+          type: boolean
+        ollamaGpuAccessible:
+          type: boolean
+    SystemInformationResponse:
+      type: object
+      required: [cpu, mem, os, disk, currentLoad, fsSize, uptime, graphics]
+      properties:
+        cpu:
+          type: object
+          additionalProperties: true
+        mem:
+          type: object
+          additionalProperties: true
+        os:
+          type: object
+          additionalProperties: true
+        disk:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomadDiskInfo'
+        currentLoad:
+          type: object
+          additionalProperties: true
+        fsSize:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        uptime:
+          type: object
+          additionalProperties: true
+        graphics:
+          type: object
+          additionalProperties: true
+        gpuHealth:
+          $ref: '#/components/schemas/GpuHealthStatus'
+    WikipediaOption:
+      type: object
+      required: [id, name, description, size_mb]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        size_mb:
+          type: number
+        url:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+    WikipediaCurrentSelection:
+      type: object
+      required: [optionId, status]
+      properties:
+        optionId:
+          type: string
+        status:
+          type: string
+          enum: [none, downloading, installed, failed]
+        filename:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+    WikipediaState:
+      type: object
+      required: [options]
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/WikipediaOption'
+        currentSelection:
+          oneOf:
+            - $ref: '#/components/schemas/WikipediaCurrentSelection'
+            - type: 'null'
+    SelectWikipediaRequest:
+      type: object
+      required: [optionId]
+      properties:
+        optionId:
+          type: string
+    SelectWikipediaResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        jobId:
+          type: string
+        message:
+          type: string
+    ListRemoteZimFilesResponse:
+      type: object
+      required: [items, has_more, total_count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RemoteZimFileEntry'
+        has_more:
+          type: boolean
+        total_count:
+          type: integer
+    RemoteZimFileEntry:
+      type: object
+      required: [id, title, updated, summary, size_bytes, download_url, author, file_name]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        updated:
+          type: string
+        summary:
+          type: string
+        size_bytes:
+          type: integer
+        download_url:
+          type: string
+          format: uri
+        author:
+          type: string
+        file_name:
+          type: string
+    ZimFileWithMetadata:
+      allOf:
+        - $ref: '#/components/schemas/FileEntry'
+        - type: object
+          properties:
+            title:
+              type: string
+              nullable: true
+            summary:
+              type: string
+              nullable: true
+            author:
+              type: string
+              nullable: true
+            size_bytes:
+              type: integer
+              nullable: true
+    ListZimFilesResponse:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ZimFileWithMetadata'
+        next:
+          type: string
+    RemoteZimDownloadRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        metadata:
+          type: object
+          properties:
+            title:
+              type: string
+            summary:
+              type: string
+            author:
+              type: string
+            size_bytes:
+              type: number
+    RemoteZimDownloadResponse:
+      type: object
+      required: [message, filename, url]
+      properties:
+        message:
+          type: string
+        filename:
+          type: string
+        jobId:
+          type: string
+        url:
+          type: string
+          format: uri
+    DownloadCategoryTierRequest:
+      type: object
+      required: [categorySlug, tierSlug]
+      properties:
+        categorySlug:
+          type: string
+        tierSlug:
+          type: string
+    CategoryTierDownloadResponse:
+      type: object
+      required: [message, categorySlug, tierSlug]
+      properties:
+        message:
+          type: string
+        categorySlug:
+          type: string
+        tierSlug:
+          type: string
+        resources:
+          type: array
+          items:
+            type: string
+          nullable: true
+    NomadOllamaModelTag:
+      type: object
+      required: [name, size, context, input, cloud, thinking]
+      properties:
+        name:
+          type: string
+        size:
+          type: string
+        context:
+          type: string
+        input:
+          type: string
+        cloud:
+          type: boolean
+        thinking:
+          type: boolean
+    NomadOllamaModel:
+      type: object
+      required: [id, name, description, estimated_pulls, model_last_updated, first_seen, tags]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        estimated_pulls:
+          type: string
+        model_last_updated:
+          type: string
+        first_seen:
+          type: string
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomadOllamaModelTag'
+    AvailableModelsResponse:
+      type: object
+      required: [models, hasMore]
+      properties:
+        models:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomadOllamaModel'
+        hasMore:
+          type: boolean
+    InstalledModel:
+      type: object
+      additionalProperties: true
+      description: Local model representation returned by the Ollama library
+    ModelNameRequest:
+      type: object
+      required: [model]
+      properties:
+        model:
+          type: string
+    OllamaChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+    OllamaChatRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/OllamaChatMessage'
+        stream:
+          type: boolean
+        sessionId:
+          type: integer
+          minimum: 1
+    OllamaChatResponse:
+      type: object
+      required: [model, created_at, message, done]
+      properties:
+        model:
+          type: string
+        created_at:
+          type: string
+        message:
+          type: object
+          required: [role, content]
+          properties:
+            role:
+              type: string
+            content:
+              type: string
+            thinking:
+              type: string
+        done:
+          type: boolean
+    SuggestionsResponse:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: string
+    ChatSessionSummary:
+      type: object
+      required: [id, title, model]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        model:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+        lastMessage:
+          type: string
+          nullable: true
+    ChatMessage:
+      type: object
+      required: [id, role, content]
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+        timestamp:
+          type: string
+    ChatSessionDetail:
+      type: object
+      required: [id, title, model, messages]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        model:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+    CreateChatSessionRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        model:
+          type: string
+    UpdateChatSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        model:
+          type: string
+    ChatSessionCreateResponse:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        model:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+    AddChatMessageRequest:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+          minLength: 1
+    RagUploadResponse:
+      type: object
+      required: [message, fileName, filePath, alreadyProcessing]
+      properties:
+        message:
+          type: string
+        jobId:
+          type: string
+        fileName:
+          type: string
+        filePath:
+          type: string
+        alreadyProcessing:
+          type: boolean
+    EmbedJobWithProgress:
+      type: object
+      required: [jobId, fileName, filePath, progress, status]
+      properties:
+        jobId:
+          type: string
+        fileName:
+          type: string
+        filePath:
+          type: string
+        progress:
+          type: number
+        status:
+          type: string
+    RagFilesResponse:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+    DeleteRagFileRequest:
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+    RagJobStatus:
+      type: object
+      additionalProperties: true
+      description: Current embed job status payload
+    RagSyncResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        filesScanned:
+          type: integer
+        filesQueued:
+          type: integer
+        details:
+          type: string
+    BenchmarkResult:
+      type: object
+      required:
+        [benchmark_id, benchmark_type, cpu_model, cpu_cores, cpu_threads, ram_bytes, disk_type, cpu_score, memory_score, disk_read_score, disk_write_score, nomad_score, submitted_to_repository]
+      properties:
+        id:
+          type: integer
+        benchmark_id:
+          type: string
+        benchmark_type:
+          type: string
+          enum: [full, system, ai]
+        cpu_model:
+          type: string
+        cpu_cores:
+          type: integer
+        cpu_threads:
+          type: integer
+        ram_bytes:
+          type: integer
+        disk_type:
+          type: string
+          enum: [ssd, hdd, nvme, unknown]
+        gpu_model:
+          type: string
+          nullable: true
+        cpu_score:
+          type: number
+        memory_score:
+          type: number
+        disk_read_score:
+          type: number
+        disk_write_score:
+          type: number
+        ai_tokens_per_second:
+          type: number
+          nullable: true
+        ai_model_used:
+          type: string
+          nullable: true
+        ai_time_to_first_token:
+          type: number
+          nullable: true
+        nomad_score:
+          type: number
+        submitted_to_repository:
+          type: boolean
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        repository_id:
+          type: string
+          nullable: true
+        builder_tag:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RunBenchmarkRequest:
+      type: object
+      properties:
+        benchmark_type:
+          type: string
+          enum: [full, system, ai]
+    RunBenchmarkResponse:
+      type: object
+      required: [success, job_id, benchmark_id, message]
+      properties:
+        success:
+          type: boolean
+        job_id:
+          type: string
+        benchmark_id:
+          type: string
+        message:
+          type: string
+    RunBenchmarkSyncResponse:
+      type: object
+      required: [success, benchmark_id, nomad_score, result]
+      properties:
+        success:
+          type: boolean
+        benchmark_id:
+          type: string
+        nomad_score:
+          type: number
+        result:
+          $ref: '#/components/schemas/BenchmarkResult'
+    SimpleBenchmarkStartResponse:
+      type: object
+      required: [success, benchmark_id, message]
+      properties:
+        success:
+          type: boolean
+        benchmark_id:
+          type: string
+        message:
+          type: string
+    BenchmarkConflictResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+        current_benchmark_id:
+          type: string
+    BenchmarkResultsResponse:
+      type: object
+      required: [results, total]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BenchmarkResult'
+        total:
+          type: integer
+    SubmitBenchmarkRequest:
+      type: object
+      properties:
+        benchmark_id:
+          type: string
+        anonymous:
+          type: boolean
+    SubmitBenchmarkSuccessResponse:
+      type: object
+      required: [success, repository_id, percentile]
+      properties:
+        success:
+          type: boolean
+        repository_id:
+          type: string
+        percentile:
+          type: number
+    SubmitBenchmarkErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+    UpdateBuilderTagRequest:
+      type: object
+      required: [benchmark_id]
+      properties:
+        benchmark_id:
+          type: string
+        builder_tag:
+          type: string
+          nullable: true
+          pattern: '^[A-Za-z]+-[A-Za-z]+-\d{4}$'
+    UpdateBuilderTagResponse:
+      type: object
+      required: [success, builder_tag]
+      properties:
+        success:
+          type: boolean
+        builder_tag:
+          type: string
+          nullable: true
+    UpdateBuilderTagErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+    RepositoryStats:
+      type: object
+      required: [total_submissions, average_score, median_score, top_score, percentiles]
+      properties:
+        total_submissions:
+          type: integer
+        average_score:
+          type: number
+        median_score:
+          type: number
+        top_score:
+          type: number
+        percentiles:
+          type: object
+          required: [p10, p25, p50, p75, p90]
+          properties:
+            p10:
+              type: number
+            p25:
+              type: number
+            p50:
+              type: number
+            p75:
+              type: number
+            p90:
+              type: number
+    BenchmarkStatusResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum:
+            - idle
+            - starting
+            - detecting_hardware
+            - running_cpu
+            - running_memory
+            - running_disk_read
+            - running_disk_write
+            - downloading_ai_model
+            - running_ai
+            - calculating_score
+            - completed
+            - error
+        benchmarkId:
+          type: string
+          nullable: true
+    BenchmarkSettings:
+      type: object
+      required: [allow_anonymous_submission, installation_id, last_benchmark_run]
+      properties:
+        allow_anonymous_submission:
+          type: boolean
+        installation_id:
+          type: string
+          nullable: true
+        last_benchmark_run:
+          type: string
+          nullable: true
+    DocIndexItem:
+      type: object
+      required: [title, slug]
+      properties:
+        title:
+          type: string
+        slug:
+          type: string

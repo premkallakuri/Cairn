@@ -1,0 +1,38 @@
+id: nomad_flatnotes
+kind: sibling_app
+display:
+  name: FlatNotes
+  description: Simple notes app for local knowledge capture.
+  icon: IconNotes
+  powered_by: FlatNotes
+  order: 40
+  ui_location: bridge
+runtime:
+  image: dullage/flatnotes:latest
+  ports:
+    - host: 8081
+      container: 8080
+  mounts:
+    - source: ${NOMAD_STORAGE_PATH}/flatnotes
+      target: /data
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires:
+    - storage/flatnotes
+dependencies: []
+healthcheck:
+  type: http
+  target: http://{container_name}:8080
+hooks: {}
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: true
+docs:
+  slug: app-flatnotes
+tests:
+  smoke: apps/flatnotes/tests/test_smoke.py

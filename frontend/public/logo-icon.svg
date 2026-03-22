@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Cairn icon mark - works on any background -->
+  <g transform="translate(0, 0)">
+    <!-- Bottom stone -->
+    <ellipse cx="32" cy="54" rx="26" ry="9" fill="#C2543D" opacity="0.85"/>
+    <ellipse cx="32" cy="51" rx="24" ry="8" fill="#D4715A"/>
+    <!-- Middle stone -->
+    <ellipse cx="32" cy="36" rx="18" ry="7" fill="#C2543D" opacity="0.85"/>
+    <ellipse cx="32" cy="34" rx="16" ry="6" fill="#D4715A"/>
+    <!-- Top stone -->
+    <ellipse cx="32" cy="22" rx="12" ry="5.5" fill="#C2543D" opacity="0.85"/>
+    <ellipse cx="32" cy="20" rx="10" ry="4.5" fill="#D4715A"/>
+    <!-- Summit stone (teal) -->
+    <ellipse cx="32" cy="11" rx="7" ry="3.5" fill="#0D9488"/>
+    <ellipse cx="32" cy="10" rx="5.5" ry="2.5" fill="#14B8A6"/>
+    <ellipse cx="32" cy="9.5" rx="3" ry="1.2" fill="#5EEAD4" opacity="0.5"/>
+  </g>
+</svg>

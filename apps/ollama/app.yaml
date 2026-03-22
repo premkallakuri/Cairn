@@ -1,0 +1,39 @@
+id: nomad_ollama
+kind: sibling_app
+display:
+  name: AI Assistant Runtime
+  description: Local model runtime for chat and embeddings.
+  icon: IconRobot
+  powered_by: Ollama
+  order: 30
+  ui_location: bridge
+runtime:
+  image: ollama/ollama:0.11.0
+  ports:
+    - host: 11434
+      container: 11434
+  mounts:
+    - source: ${NOMAD_STORAGE_PATH}/ollama
+      target: /root/.ollama
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires:
+    - storage/ollama
+dependencies:
+  - nomad_qdrant
+healthcheck:
+  type: http
+  target: http://{container_name}:11434/api/tags
+hooks: {}
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: true
+docs:
+  slug: app-ollama
+tests:
+  smoke: apps/ollama/tests/test_smoke.py

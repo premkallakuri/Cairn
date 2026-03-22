@@ -1,0 +1,53 @@
+{
+  "collections": [
+    {
+      "name": "Pacific demo",
+      "slug": "pacific",
+      "description": "Synthetic regions for API tests",
+      "icon": "globe",
+      "language": "en",
+      "resources": [
+        {
+          "id": "oregon",
+          "version": "2025-12",
+          "title": "Oregon",
+          "description": "Demo region",
+          "url": "https://maps.example.test/oregon_2025-12.pmtiles",
+          "size_mb": 233
+        },
+        {
+          "id": "hawaii",
+          "version": "2025-12",
+          "title": "Hawaii",
+          "description": "Demo region",
+          "url": "https://maps.example.test/hawaii_2025-12.pmtiles",
+          "size_mb": 233
+        },
+        {
+          "id": "california",
+          "version": "2025-12",
+          "title": "California",
+          "description": "Demo region",
+          "url": "https://maps.example.test/california_2025-12.pmtiles",
+          "size_mb": 233
+        },
+        {
+          "id": "washington",
+          "version": "2025-12",
+          "title": "Washington",
+          "description": "Demo region",
+          "url": "https://maps.example.test/washington_2025-12.pmtiles",
+          "size_mb": 233
+        },
+        {
+          "id": "alaska",
+          "version": "2025-12",
+          "title": "Alaska",
+          "description": "Demo region",
+          "url": "https://maps.example.test/alaska_2025-12.pmtiles",
+          "size_mb": 233
+        }
+      ]
+    }
+  ]
+}

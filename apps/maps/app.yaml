@@ -1,0 +1,35 @@
+id: nomad_maps
+kind: core_capability
+display:
+  name: Atlas Maps
+  description: Built-in offline PMTiles maps capability.
+  icon: IconMap
+  powered_by: Atlas Haven
+  order: 70
+  ui_location: bridge
+runtime:
+  image: builtin://atlas-haven/maps
+  builtin: true
+  mounts:
+    - source: ${NOMAD_STORAGE_PATH}/maps
+      target: /workspace/storage/maps
+network:
+  join: project-nomad_default
+storage:
+  requires:
+    - storage/maps
+dependencies: []
+healthcheck:
+  type: internal
+  target: atlas-haven://maps
+hooks: {}
+updates:
+  strategy: manifest_version
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: false
+docs:
+  slug: app-maps
+tests:
+  smoke: apps/maps/tests/test_smoke.py

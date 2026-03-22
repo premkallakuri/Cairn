@@ -1,0 +1,35 @@
+id: nomad_benchmark_helper
+kind: dependency_app
+display:
+  name: Benchmark Helper
+  description: Helper runtime for benchmark execution.
+  icon: IconGauge
+  powered_by: Sysbench
+  order: 80
+  ui_location: control_room
+runtime:
+  image: alpine:3.20
+  command:
+    - sh
+    - -c
+    - sleep infinity
+  restart: unless-stopped
+network:
+  join: project-nomad_default
+storage:
+  requires: []
+dependencies: []
+healthcheck:
+  type: process
+  target: sleep
+hooks: {}
+updates:
+  strategy: image_tag
+permissions:
+  docker_socket: false
+capabilities:
+  internet_required_for_install: true
+docs:
+  slug: app-benchmark-helper
+tests:
+  smoke: apps/benchmark-helper/tests/test_smoke.py
